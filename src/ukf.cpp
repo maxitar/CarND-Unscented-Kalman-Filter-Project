@@ -17,11 +17,13 @@ UKF::UKF() {
   // if this is false, radar measurements will be ignored (except during init)
   use_radar_ = true;
 
+  n_x_ = 5; // state dim
+  n_aug_ = 7; // aug dim
   // initial state vector
-  x_ = VectorXd(5);
+  x_ = VectorXd(dim);
 
   // initial covariance matrix
-  P_ = MatrixXd(5, 5);
+  P_ = MatrixXd(dim, dim);
 
   // Process noise standard deviation longitudinal acceleration in m/s^2
   std_a_ = 30;
@@ -51,6 +53,11 @@ UKF::UKF() {
 
   Hint: one or more values initialized above might be wildly off...
   */
+  lambda_ = 3. - n_aug_;
+  int n_sigma = 1+2*n_aug_;
+  weights_ = VectorXd(n_sigma);
+  weights_.fill(0.5/(lambda+n_sigma));
+  weights_(0) = lambda/(lambda+n_sigma);
 }
 
 UKF::~UKF() {}
@@ -59,6 +66,18 @@ UKF::~UKF() {}
  * @param {MeasurementPackage} meas_package The latest measurement data of
  * either radar or laser.
  */
+MatrixXd UFK::GenerateSigmaPoints(const VectorXd& x_aug, const MatrixXd& P_aug) {
+  double coef = std::sqrt(n_aug_+lambda_);
+  MatrixXd sqrtP = P_aug.llt().matrixL();
+  MatrixXd sigma_pts;
+  sigma_pts.col(0) = x_aug;
+  for (int i = 0; i < n_aug_; ++i) {
+    sigma_pts.col(i+1) = x_aug + coef*sqrtP.col(i);
+    sigma_pts.col(i+1+n_aug_) = x_aug - coef*sqrtP.col(i);
+  }
+  return sigma_pts;
+}
+
 void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
   /**
   TODO:
@@ -66,6 +85,69 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
   Complete this function! Make sure you switch between lidar and radar
   measurements.
   */
+  if (is_initialized_ == false) {
+    x_ = VectorXd(n_x_);
+    P_ = MatrixXd::Identity(n_x_, n_x_);
+    P_(3, 3) = 1000.;
+    P_(4, 4) = 1000.;
+    P_(5, 5) = 1000.;
+    if (meas_package.sensor_type_ == MeasurementPackage::RADAR) {
+      double rho = meas_package.raw_measurements_[0];
+      double theta = meas_package.raw_measurements_[1];
+      x_ << rho*std::cos(theta) << rho*std::sin(theta) << 0. << 0.;
+    }
+    else {
+      x_ << meas_package.raw_measurements_[0] << meas_package.raw_measurements_[0] << 0. << 0.;
+    }
+    time_us_ = meas_package.timestamp_;
+    is_initialized_ == true;
+    return;
+  }
+  double delta_t = (meas_package.timestamp_ - time_us_)/1e6;
+  time_us_ = meas_package.timestamp_; 
+  Prediction(delta_t);
+}
+
+void UKF::PredictSigmaPoints(double delta_t) {
+  VectorXd x_aug(n_aug_);
+  x_aug.fill(0.);
+  x_aug.head(n_x_) = x_;
+
+  MatrixXd P_aug(n_aug_, n_aug_);
+  P_aug.fill(0.);
+  P_aug.topLeftCorner(n_x_, n_x_) = P_;
+  P_aug(n_x_, n_x_) = std_a_*std_a_;
+  P_aug(n_x_+1, n_x_+1) = std_yawdd_*std_yawdd_;
+  sigma_pts = GenerateSigmaPoints(x_aug, P_aug);
+  int n_sigma = 1 + 2*n_aug_;
+  VectorXd delta_x(n_x_);
+  delta_x.fill(0.);
+  VectorXd delta_noise(n_x_);
+  delta_noise.fill(0.);
+  for (int i = 0; i < n_sigma; ++i) {
+    double px = sigma_pts(0, i);
+    double py = sigma_pts(1, i);
+    double v  = sigma_pts(2, i);
+    double psi  = sigma_pts(3, i);
+    double psid = sigma_pts(4, i);
+    double nu_a = sigma_pts(5, i);
+    double nu_psidd = sigma_pts(6, i);
+    if (std::fabs(psid) < 1e-4) {
+      delta_x(0) = v*std::cos(psi)*delta_t/psid;
+      delta_x(1) = v*std::sin(psi)*delta_t/psid;
+    }
+    else {
+      delta_x(0) = v*(std::sin(psi+delta_t*psid)-std::sin(psi))/psid;
+      delta_x(1) = v*(std::cos(psi+delta_t*psid)-std::cos(psi))/psid;
+      delta_x(3) = psid*delta_t;
+    }
+    delta_noise(0) = 0.5*delta_t*delta_t*std::cos(psi)*nu_a;
+    delta_noise(1) = 0.5*delta_t*delta_t*std::sin(psi)*nu_a;
+    delta_noise(2) = delta_t*nu_a;
+    delta_noise(3) = 0.5*delta_t*delta_t*nu_psidd;
+    delta_noise(4) = delta_t*nu_psidd;
+    Xsig_pred_.col(i) = sigma_pts.col(i).head(n_x) + delta_x + delta_noise;
+  } 
 }
 
 /**
@@ -80,6 +162,16 @@ void UKF::Prediction(double delta_t) {
   Complete this function! Estimate the object's location. Modify the state
   vector, x_. Predict sigma points, the state, and the state covariance matrix.
   */
+  PredictSigmaPoints(delta_t);
+  int n_sigma = 1 + 2*n_aug_;
+  x_.fill(0.);
+  for (int i = 0; i < n_sigma; ++i) {
+    x_ += weights_(i)*Xsig_pred_.col(i);
+  }
+  for (int i = 0; i < n_sigma; ++i) {
+    VectorXd diff = Xsig_pred_.col(i) - x_;
+    P_ += weights_(i)*diff*diff.transpose();
+  }
 }
 
 /**
