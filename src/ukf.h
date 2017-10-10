@@ -80,16 +80,33 @@ public:
    * Updates the state and the state covariance matrix using a laser measurement
    * @param meas_package The measurement at k+1
    */
-  void UpdateLidar(MeasurementPackage meas_package);
+  void UpdateLidar(const MeasurementPackage& meas_package);
 
   /**
    * Updates the state and the state covariance matrix using a radar measurement
    * @param meas_package The measurement at k+1
    */
-  void UpdateRadar(MeasurementPackage meas_package);
+  void UpdateRadar(const MeasurementPackage& meas_package);
 private:
+  /**
+   * Generate the sigma points
+   * @param x_aug The augmented mean state at k
+   * @param P_aug The augmented covariance matrix at k
+   */
   MatrixXd GenerateSigmaPoints(const VectorXd& x_aug, const MatrixXd& P_aug);
+  /** 
+   * Predict the sigma points
+   * @param delta_t The time between the measurements at k+1 and k
+   */
   void PredictSigmaPoints(double delta_t);
+  /**
+   * Combine common update operations for Lidar and Radar
+   * @param meas_package The measurement at k+1
+   * @param z The predicted measurement mean at k+1
+   * @param S The predicted covariance at k+1
+   * @param Zsig The individual predcited measurement points at k+1
+   */
+  void Update(const MeasurementPackage& meas_package, const VectorXd& z, const MatrixXd& S, const MatrixXd& Zsig);
 };
 
 #endif /* UKF_H */
