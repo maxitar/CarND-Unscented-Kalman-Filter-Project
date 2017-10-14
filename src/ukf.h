@@ -106,7 +106,14 @@ private:
    * @param S The predicted covariance at k+1
    * @param Zsig The individual predcited measurement points at k+1
    */
-  void Update(const MeasurementPackage& meas_package, const VectorXd& z, const MatrixXd& S, const MatrixXd& Zsig);
+  double Update(const MeasurementPackage& meas_package, const VectorXd& z, const MatrixXd& S, const MatrixXd& Zsig);
+  ///* Number of radar measurements
+  int n_radar_ = 0;
+  int n_over95_radar_ = 0;
+  int n_lidar_ = 0;
+  int n_over95_lidar_ = 0;
+  const double chi95_radar_ = 7.815;
+  const double chi95_lidar_ = 5.991;
 };
 
 #endif /* UKF_H */

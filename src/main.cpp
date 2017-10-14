@@ -5,8 +5,6 @@
 #include "ukf.h"
 #include "tools.h"
 
-using namespace std;
-
 // for convenience
 using json = nlohmann::json;
 
@@ -35,8 +33,8 @@ int main()
 
   // used to compute the RMSE later
   Tools tools;
-  vector<VectorXd> estimations;
-  vector<VectorXd> ground_truth;
+  std::vector<VectorXd> estimations;
+  std::vector<VectorXd> ground_truth;
 
   h.onMessage([&ukf,&tools,&estimations,&ground_truth](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length, uWS::OpCode opCode) {
     // "42" at the start of the message means there's a websocket message event.
@@ -56,17 +54,32 @@ int main()
         if (event == "telemetry") {
           // j[1] is the data JSON object
           
-          string sensor_measurment = j[1]["sensor_measurement"];
+          std::string sensor_measurment = j[1]["sensor_measurement"];
           
           MeasurementPackage meas_package;
-          istringstream iss(sensor_measurment);
+          std::istringstream iss(sensor_measurment);
     	  long long timestamp;
 
     	  // reads first element from the current line
-    	  string sensor_type;
+          std::string sensor_type;
     	  iss >> sensor_type;
 
     	  if (sensor_type.compare("L") == 0) {
+                        if (ukf.is_initialized_ == true && ukf.use_laser_ == false) {
+                          VectorXd RMSE = tools.CalculateRMSE(estimations, ground_truth);
+
+                          json msgJson;
+                          msgJson["estimate_x"] = estimations.back()[0];
+                          msgJson["estimate_y"] = estimations.back()[1];
+                          msgJson["rmse_x"] =  RMSE(0);
+                          msgJson["rmse_y"] =  RMSE(1);
+                          msgJson["rmse_vx"] = RMSE(2);
+                          msgJson["rmse_vy"] = RMSE(3);
+                          auto msg = "42[\"estimate_marker\"," + msgJson.dump() + "]";
+                          // std::cout << msg << std::endl;
+                          ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
+                          return;
+                        }
       	  		meas_package.sensor_type_ = MeasurementPackage::LASER;
           		meas_package.raw_measurements_ = VectorXd(2);
           		float px;
@@ -77,7 +90,21 @@ int main()
           		iss >> timestamp;
           		meas_package.timestamp_ = timestamp;
           } else if (sensor_type.compare("R") == 0) {
+                        if (ukf.is_initialized_ == true && ukf.use_radar_ == false) {
+                          VectorXd RMSE = tools.CalculateRMSE(estimations, ground_truth);
 
+                          json msgJson;
+                          msgJson["estimate_x"] = estimations.back()[0];
+                          msgJson["estimate_y"] = estimations.back()[1];
+                          msgJson["rmse_x"] =  RMSE(0);
+                          msgJson["rmse_y"] =  RMSE(1);
+                          msgJson["rmse_vx"] = RMSE(2);
+                          msgJson["rmse_vy"] = RMSE(3);
+                          auto msg = "42[\"estimate_marker\"," + msgJson.dump() + "]";
+                          // std::cout << msg << std::endl;
+                          ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
+                          return;
+                        }
       	  		meas_package.sensor_type_ = MeasurementPackage::RADAR;
           		meas_package.raw_measurements_ = VectorXd(3);
           		float ro;
@@ -125,6 +152,7 @@ int main()
     	  estimate(2) = v1;
     	  estimate(3) = v2;
     	  
+          std::cout << estimate << std::endl;
     	  estimations.push_back(estimate);
 
     	  VectorXd RMSE = tools.CalculateRMSE(estimations, ground_truth);

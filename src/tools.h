@@ -21,7 +21,7 @@ public:
   /**
   * A helper method to calculate RMSE.
   */
-  VectorXd CalculateRMSE(const vector<VectorXd> &estimations, const vector<VectorXd> &ground_truth);
+  VectorXd CalculateRMSE(const std::vector<VectorXd> &estimations, const std::vector<VectorXd> &ground_truth);
 
 };
 
