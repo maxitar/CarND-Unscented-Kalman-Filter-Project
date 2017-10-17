@@ -141,7 +141,7 @@ int main()
 
     	  double p_x = ukf.x_(0);
     	  double p_y = ukf.x_(1);
-    	  double v  = ukf.x_(2);
+    	  double v   = ukf.x_(2);
     	  double yaw = ukf.x_(3);
 
     	  double v1 = cos(yaw)*v;
@@ -152,7 +152,6 @@ int main()
     	  estimate(2) = v1;
     	  estimate(3) = v2;
     	  
-          std::cout << estimate << std::endl;
     	  estimations.push_back(estimate);
 
     	  VectorXd RMSE = tools.CalculateRMSE(estimations, ground_truth);

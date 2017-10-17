@@ -42,13 +42,12 @@ public:
   double std_radrd_ ;
   ///* Weights of sigma points
   VectorXd weights_;
-
   ///* State dimension
   int n_x_;
-
   ///* Augmented state dimension
   int n_aug_;
-
+  ///* Number of sigma points
+  int n_sigma_;
   ///* Sigma point spreading parameter
   double lambda_;
 
@@ -88,6 +87,7 @@ public:
    */
   void UpdateRadar(const MeasurementPackage& meas_package);
 private:
+  const double PI2 = 2.*3.14159265359;
   /**
    * Generate the sigma points
    * @param x_aug The augmented mean state at k
@@ -106,13 +106,18 @@ private:
    * @param S The predicted covariance at k+1
    * @param Zsig The individual predcited measurement points at k+1
    */
-  double Update(const MeasurementPackage& meas_package, const VectorXd& z, const MatrixXd& S, const MatrixXd& Zsig);
+  double Update(const MeasurementPackage& meas_package, const VectorXd& z_pred, const MatrixXd& S, const MatrixXd& Zsig);
   ///* Number of radar measurements
   int n_radar_ = 0;
+  ///* Number of radar measurements outside of 95-percentile
   int n_over95_radar_ = 0;
+  ///* Number of lidar measurements
   int n_lidar_ = 0;
+  ///* Number of lidar measurements outside of 95-percentile
   int n_over95_lidar_ = 0;
+  ///* 95-percentile of chi^2 distribution with 3 dofs
   const double chi95_radar_ = 7.815;
+  ///* 95-percentile of chi^2 distribution with 2 dofs
   const double chi95_lidar_ = 5.991;
 };
 
