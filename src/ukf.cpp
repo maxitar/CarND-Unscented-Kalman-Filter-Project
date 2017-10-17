@@ -154,8 +154,11 @@ void UKF::Prediction(double delta_t) {
  * @param {MeasurementPackage} meas_package
  */
 void UKF::UpdateLidar(const MeasurementPackage& meas_package) {
+  // Copy px and py directly
   MatrixXd Zsig = Xsig_pred_.topLeftCorner(2, n_sigma_);
+  // Copy the mean of px and py
   VectorXd z_pred = x_.head(2);
+  // Compute covariance matrix
   MatrixXd S(2, 2);
   S.fill(0.);
   VectorXd diff(2); 
@@ -165,6 +168,7 @@ void UKF::UpdateLidar(const MeasurementPackage& meas_package) {
   }
   S(0, 0) += std_laspx_*std_laspx_;
   S(1, 1) += std_laspy_*std_laspy_;
+  // Finish the update and calculate the normalized innovation squared
   double NIS = Update(meas_package, z_pred, S, Zsig);
   ++n_lidar_;
   if (NIS > chi95_lidar_) ++n_over95_lidar_;
@@ -191,11 +195,13 @@ void UKF::UpdateRadar(const MeasurementPackage& meas_package) {
     Zsig(1, i) = phi;
     Zsig(2, i) = rhod;
   }
+  // Compute mean
   VectorXd z_pred(3);
   z_pred.fill(0.);
   for (int i = 0; i < n_sigma_; ++i) {
     z_pred += weights_(i)*Zsig.col(i);
   }
+  // Compute covariance matrix
   MatrixXd S(3, 3);
   S.fill(0.);
   VectorXd diff(3); 
@@ -207,6 +213,7 @@ void UKF::UpdateRadar(const MeasurementPackage& meas_package) {
   S(0, 0) += std_radr_*std_radr_;
   S(1, 1) += std_radphi_*std_radphi_;
   S(2, 2) += std_radrd_*std_radrd_;
+  // Finish the update and calculate the normalized innovation squared
   double NIS = Update(meas_package, z_pred, S, Zsig);
   ++n_radar_;
   if (NIS > chi95_radar_) ++n_over95_radar_;
@@ -217,6 +224,7 @@ double UKF::Update(const MeasurementPackage& meas_package,
     const VectorXd& z_pred, const MatrixXd& S, const MatrixXd& Zsig) {
   int n_meas = z_pred.size();
   MatrixXd T(n_x_, n_meas);
+  // Compute the cross-covariance matrix
   T.fill(0.);
   VectorXd xdiff(n_x_);
   VectorXd zdiff(n_meas);
@@ -224,6 +232,8 @@ double UKF::Update(const MeasurementPackage& meas_package,
     xdiff = Xsig_pred_.col(i) - x_;
     xdiff(3) = std::fmod(xdiff(3), PI2);
     zdiff = Zsig.col(i) - z_pred;
+    // If the size of the measurement is 3, then we have a RADAR measurement
+    // so we normalize the angle
     if (n_meas == 3) zdiff(1) = std::fmod(zdiff(1), PI2);
     T += weights_(i)*xdiff*zdiff.transpose();
   }
@@ -234,5 +244,6 @@ double UKF::Update(const MeasurementPackage& meas_package,
   if (n_meas == 3) zdiff(1) = std::fmod(zdiff(1), PI2);
   x_ += K*zdiff;
   P_ -= K*S*K.transpose();
+  // Return NIS
   return zdiff.transpose()*Sinv*zdiff;
 }
