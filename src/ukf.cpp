@@ -126,6 +126,7 @@ void UKF::PredictSigmaPoints(double delta_t) {
     delta_noise(3) = 0.5*delta_t*delta_t*nu_psidd;
     delta_noise(4) = delta_t*nu_psidd;
     Xsig_pred_.col(i) = sigma_pts.col(i).head(n_x_) + delta_x + delta_noise;
+    Xsig_pred_(3,i) = std::fmod(Xsig_pred_(3,i), PI2);
   } 
 }
 
@@ -167,7 +168,7 @@ void UKF::UpdateLidar(const MeasurementPackage& meas_package) {
   double NIS = Update(meas_package, z_pred, S, Zsig);
   ++n_lidar_;
   if (NIS > chi95_lidar_) ++n_over95_lidar_;
-  std::cout << "LIDAR NIS% over 95th percentile: " << double(n_over95_lidar_)*100./n_lidar_ << std::endl;
+  std::cout << "Percentage of LIDAR NIS observations over 95 chi^2 percentile: " << double(n_over95_lidar_)*100./n_lidar_ << std::endl;
 }
 
 /**
@@ -182,6 +183,8 @@ void UKF::UpdateRadar(const MeasurementPackage& meas_package) {
     double v   = Xsig_pred_(2, i);
     double yaw = Xsig_pred_(3, i);
     double rho = std::sqrt(px*px + py*py);
+    // if both px and py are zero, atan2 is undefined, so we skip updating
+    if (rho < 1e-6) return;
     double phi = std::atan2(py, px);
     double rhod = (px*std::cos(yaw)*v + py*std::sin(yaw)*v)/rho;
     Zsig(0, i) = rho;
@@ -207,7 +210,7 @@ void UKF::UpdateRadar(const MeasurementPackage& meas_package) {
   double NIS = Update(meas_package, z_pred, S, Zsig);
   ++n_radar_;
   if (NIS > chi95_radar_) ++n_over95_radar_;
-  std::cout << "RADAR NIS% over 95th percentile: " << double(n_over95_radar_)*100./n_radar_<< std::endl;
+  std::cout << "Percentage of RADAR NIS observations over 95 chi^2 percentile: " << double(n_over95_radar_)*100./n_radar_<< std::endl;
 }
 
 double UKF::Update(const MeasurementPackage& meas_package, 
