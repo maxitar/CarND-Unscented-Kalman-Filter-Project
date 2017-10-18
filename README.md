@@ -70,7 +70,7 @@ The script must be in the same folder as the output file. It will output two .pn
 
 ## Results
 
-Using *sigma\_a = 1* and *sigma\_yawdd = 0.5*, the RMSE is:
+Using *sigma\_a = 1*, *sigma\_yawdd = 0.5* and initial covariance **P = I**, the RMSE is:
 * px RMSE: 0.067
 * py RMSE: 0.083
 * vx RMSE: 0.324
