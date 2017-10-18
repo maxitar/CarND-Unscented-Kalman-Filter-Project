@@ -88,6 +88,13 @@ MatrixXd UKF::GenerateSigmaPoints(const VectorXd& x_aug, const MatrixXd& P_aug) 
   return sigma_pts;
 }
 
+double NormalizeAngle(double phi) {
+  const double PI = 3.14159265359;
+  while (phi < -PI) phi += 2.*PI;
+  while (phi >  PI) phi -= 2.*PI;
+  return phi;
+}
+
 void UKF::PredictSigmaPoints(double delta_t) {
   VectorXd x_aug(n_aug_);
   x_aug.fill(0.);
@@ -126,7 +133,6 @@ void UKF::PredictSigmaPoints(double delta_t) {
     delta_noise(3) = 0.5*delta_t*delta_t*nu_psidd;
     delta_noise(4) = delta_t*nu_psidd;
     Xsig_pred_.col(i) = sigma_pts.col(i).head(n_x_) + delta_x + delta_noise;
-    Xsig_pred_(3,i) = std::fmod(Xsig_pred_(3,i), PI2);
   } 
 }
 
@@ -144,7 +150,7 @@ void UKF::Prediction(double delta_t) {
   P_.fill(0.);
   for (int i = 0; i < n_sigma_; ++i) {
     VectorXd diff = Xsig_pred_.col(i) - x_;
-    diff(3) = std::fmod(diff(3), PI2);
+    diff(3) = NormalizeAngle(diff(3));
     P_ += weights_(i)*diff*diff.transpose();
   }
 }
@@ -208,7 +214,7 @@ double UKF::UpdateRadar(const MeasurementPackage& meas_package) {
   VectorXd diff(3); 
   for (int i = 0; i < n_sigma_; ++i) {
     diff = Zsig.col(i) - z_pred;
-    diff(1) = std::fmod(diff(1), PI2);
+    diff(1) = NormalizeAngle(diff(1));
     S += weights_(i)*diff*diff.transpose();
   }
   S(0, 0) += std_radr_*std_radr_;
@@ -232,18 +238,18 @@ double UKF::Update(const MeasurementPackage& meas_package,
   VectorXd zdiff(n_meas);
   for (int i = 0; i < n_sigma_; ++i) {
     xdiff = Xsig_pred_.col(i) - x_;
-    xdiff(3) = std::fmod(xdiff(3), PI2);
+    xdiff(3) = NormalizeAngle(xdiff(3));
     zdiff = Zsig.col(i) - z_pred;
     // If the size of the measurement is 3, then we have a RADAR measurement
     // so we normalize the angle
-    if (n_meas == 3) zdiff(1) = std::fmod(zdiff(1), PI2);
+    if (n_meas == 3) zdiff(1) = NormalizeAngle(zdiff(1));
     T += weights_(i)*xdiff*zdiff.transpose();
   }
   MatrixXd Sinv = S.inverse();
   MatrixXd K = T*Sinv;
   auto& z = meas_package.raw_measurements_;
   zdiff = z - z_pred;
-  if (n_meas == 3) zdiff(1) = std::fmod(zdiff(1), PI2);
+  if (n_meas == 3) zdiff(1) = NormalizeAngle(zdiff(1));
   x_ += K*zdiff;
   P_ -= K*S*K.transpose();
   // Return NIS

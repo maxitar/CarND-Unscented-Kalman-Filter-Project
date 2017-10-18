@@ -89,7 +89,6 @@ public:
    */
   double UpdateRadar(const MeasurementPackage& meas_package);
 private:
-  const double PI2 = 2.*3.14159265359;
   /**
    * Generate the sigma points
    * @param x_aug The augmented mean state at k
