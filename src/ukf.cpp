@@ -51,7 +51,7 @@ UKF::~UKF() {}
  * @param {MeasurementPackage} meas_package The latest measurement data of
  * either radar or laser.
  */
-void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
+double UKF::ProcessMeasurement(MeasurementPackage meas_package) {
   if (is_initialized_ == false) {
     x_ = VectorXd(n_x_);
     P_ = MatrixXd::Identity(n_x_, n_x_);
@@ -64,15 +64,15 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
     }
     time_us_ = meas_package.timestamp_;
     is_initialized_ = true;
-    return;
+    return 0.;
   }
   double delta_t = (meas_package.timestamp_ - time_us_)/1e6;
   time_us_ = meas_package.timestamp_; 
   Prediction(delta_t);
   if (meas_package.sensor_type_ == MeasurementPackage::RADAR) {
-    UpdateRadar(meas_package);
+    return UpdateRadar(meas_package);
   } else {
-    UpdateLidar(meas_package);
+    return UpdateLidar(meas_package);
   }
 }
 
@@ -153,7 +153,7 @@ void UKF::Prediction(double delta_t) {
  * Updates the state and the state covariance matrix using a laser measurement.
  * @param {MeasurementPackage} meas_package
  */
-void UKF::UpdateLidar(const MeasurementPackage& meas_package) {
+double UKF::UpdateLidar(const MeasurementPackage& meas_package) {
   // Copy px and py directly
   MatrixXd Zsig = Xsig_pred_.topLeftCorner(2, n_sigma_);
   // Copy the mean of px and py
@@ -173,13 +173,14 @@ void UKF::UpdateLidar(const MeasurementPackage& meas_package) {
   ++n_lidar_;
   if (NIS > chi95_lidar_) ++n_over95_lidar_;
   std::cout << "Percentage of LIDAR NIS observations over 95 chi^2 percentile: " << double(n_over95_lidar_)*100./n_lidar_ << std::endl;
+  return NIS;
 }
 
 /**
  * Updates the state and the state covariance matrix using a radar measurement.
  * @param {MeasurementPackage} meas_package
  */
-void UKF::UpdateRadar(const MeasurementPackage& meas_package) {
+double UKF::UpdateRadar(const MeasurementPackage& meas_package) {
   MatrixXd Zsig(3, n_sigma_);
   for (int i = 0; i < n_sigma_; ++i) {
     double px  = Xsig_pred_(0, i);
@@ -188,7 +189,7 @@ void UKF::UpdateRadar(const MeasurementPackage& meas_package) {
     double yaw = Xsig_pred_(3, i);
     double rho = std::sqrt(px*px + py*py);
     // if both px and py are zero, atan2 is undefined, so we skip updating
-    if (rho < 1e-6) return;
+    if (rho < 1e-6) return 0.;
     double phi = std::atan2(py, px);
     double rhod = (px*std::cos(yaw)*v + py*std::sin(yaw)*v)/rho;
     Zsig(0, i) = rho;
@@ -218,6 +219,7 @@ void UKF::UpdateRadar(const MeasurementPackage& meas_package) {
   ++n_radar_;
   if (NIS > chi95_radar_) ++n_over95_radar_;
   std::cout << "Percentage of RADAR NIS observations over 95 chi^2 percentile: " << double(n_over95_radar_)*100./n_radar_<< std::endl;
+  return NIS;
 }
 
 double UKF::Update(const MeasurementPackage& meas_package, 

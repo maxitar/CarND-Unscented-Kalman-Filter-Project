@@ -58,4 +58,30 @@ OUTPUT: values provided by the c++ program to the simulator
 2. Make a build directory: `mkdir build && cd build`
 3. Compile: `cmake .. && make`
 4. Run it: `./UnscentedKF` Previous versions use i/o from text files.  The current state uses i/o
-from the simulator.
+from the simulator. To use i/o from text (e.g. the file in data/), supply the text file as an argument to the program. If
+no arguments are supplied it runs with i/o from simulator.
+5. When using i/o from text file, the application will output a file (called output.csv) with the predictions, ground 
+truths and NIS for each measurement. You can generate comparison plots from this file using the python script src/visualize.py. 
+The script must be in the same folder as the output file. It will output two .png files like the ones in this README.
+
+[//]: # (Image References)
+[image1]: ./images/plots.png
+[image2]: ./images/nis.png
+
+## Results
+
+Using *sigma\_a = 1* and *sigma\_yawdd = 0.5*, the RMSE is:
+* px RMSE: 0.067
+* py RMSE: 0.083
+* vx RMSE: 0.324
+* vy RMSE: 0.221
+* yaw RMSE: 0.047
+* yaw_rate RMSE: 0.123
+
+The following figure contains the plots of the estimated values versus the ground truth
+
+![alt text][image1]
+
+And these are the plots for the Radar and Lidar NIS:
+
+![alt text][image2]

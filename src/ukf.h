@@ -66,7 +66,7 @@ public:
    * ProcessMeasurement
    * @param meas_package The latest measurement data of either radar or laser
    */
-  void ProcessMeasurement(MeasurementPackage meas_package);
+  double ProcessMeasurement(MeasurementPackage meas_package);
 
   /**
    * Prediction Predicts sigma points, the state, and the state covariance
@@ -78,14 +78,16 @@ public:
   /**
    * Updates the state and the state covariance matrix using a laser measurement
    * @param meas_package The measurement at k+1
+   * returns Lidar NIS
    */
-  void UpdateLidar(const MeasurementPackage& meas_package);
+  double UpdateLidar(const MeasurementPackage& meas_package);
 
   /**
    * Updates the state and the state covariance matrix using a radar measurement
    * @param meas_package The measurement at k+1
+   * returns Radar NIS
    */
-  void UpdateRadar(const MeasurementPackage& meas_package);
+  double UpdateRadar(const MeasurementPackage& meas_package);
 private:
   const double PI2 = 2.*3.14159265359;
   /**
@@ -105,6 +107,7 @@ private:
    * @param z The predicted measurement mean at k+1
    * @param S The predicted covariance at k+1
    * @param Zsig The individual predcited measurement points at k+1
+   * returns NIS
    */
   double Update(const MeasurementPackage& meas_package, const VectorXd& z_pred, const MatrixXd& S, const MatrixXd& Zsig);
   ///* Number of radar measurements
